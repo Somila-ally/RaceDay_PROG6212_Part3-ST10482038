@@ -1,0 +1,3 @@
+@model IReadOnlyList<RaceDay.Contracts.EnrolmentDto>
+@{ ViewData["Title"] = "My event entries"; }
+<section class="page-heading compact"><span class="eyebrow">YOUR RACE CALENDAR</span><h1>My <em>entries.</em></h1><p>Every race you've signed up for, in one place.</p></section><div class="table-wrap"><table class="table"><thead><tr><th>EVENT</th><th>CATEGORY</th><th>DATE ENTERED</th><th>STATUS</th></tr></thead><tbody>@foreach (var row in Model) { <tr><td><strong>@row.EventName</strong></td><td>@row.CategoryName</td><td>@row.EnrolmentDate.ToString("dd MMM yyyy")</td><td><span class="status">@row.Status</span></td></tr> }</tbody></table></div>

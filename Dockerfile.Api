@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["RaceDay.Api/RaceDay.Api.csproj", "RaceDay.Api/"]
+COPY ["RaceDay.Contracts/RaceDay.Contracts.csproj", "RaceDay.Contracts/"]
+RUN dotnet restore "RaceDay.Api/RaceDay.Api.csproj"
+COPY . .
+WORKDIR /src/RaceDay.Api
+RUN dotnet publish "RaceDay.Api.csproj" -c Release -o /app/publish --no-restore
+
+FROM runtime AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "RaceDay.Api.dll"]
