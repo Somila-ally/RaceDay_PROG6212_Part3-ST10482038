@@ -1,0 +1,31 @@
+name: RaceDay CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-and-container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore solution
+        run: dotnet restore RaceDay.sln
+      - name: Build solution
+        run: dotnet build RaceDay.sln --no-restore --configuration Release
+      - name: Run integration tests
+        run: dotnet test RaceDay.Api.Tests/RaceDay.Api.Tests.csproj --no-build --configuration Release --verbosity normal
+      - name: Build API Docker image
+        run: docker build --file Dockerfile.Api --tag raceday-api:ci .
+      - name: Build MVC Docker image
+        run: docker build --file Dockerfile --tag raceday-mvc:ci .

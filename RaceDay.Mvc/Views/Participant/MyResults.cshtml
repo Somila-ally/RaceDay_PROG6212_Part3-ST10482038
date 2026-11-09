@@ -1,0 +1,3 @@
+@model IReadOnlyList<RaceDay.Contracts.ResultDto>
+@{ ViewData["Title"] = "My race results"; }
+<section class="page-heading compact"><span class="eyebrow">THE FINISH LINE</span><h1>Your race <em>results.</em></h1><p>Every finish is a win. See your official times and places.</p></section><div class="table-wrap"><table class="table"><thead><tr><th>EVENT</th><th>CATEGORY</th><th>FINISH TIME</th><th>POSITION</th></tr></thead><tbody>@foreach (var row in Model.OrderBy(r => r.FinishPosition)) { <tr><td><strong>@row.EventName</strong></td><td>@row.CategoryName</td><td>@row.FinishTime</td><td><span class="rank">#@row.FinishPosition</span></td></tr> }</tbody></table></div>
