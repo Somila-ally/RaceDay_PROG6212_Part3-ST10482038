@@ -10,6 +10,7 @@ TestResults/
 *.db
 *.dll
 *.pdb
+.env.api
 
 ## Rider / VS Code
 .idea/

@@ -60,7 +60,7 @@ dotnet restore RaceDay.sln
 dotnet ef database update --project RaceDay.Api/RaceDay.Api.csproj --startup-project RaceDay.Api/RaceDay.Api.csproj
 ```
 
-The migrations include the Part 1 schema plus Part 2 event fields and the Part 3 image URL fields. See [`docs/Part2_Schema_Notes.md`](docs/Part2_Schema_Notes.md) and [`docs/RaceDay_Database.sql`](docs/RaceDay_Database.sql).
+The migrations include the Part 1 schema plus the event fields and image URL fields. See [`docs/RaceDay_Database.sql`](docs/RaceDay_Database.sql) and [`docs/RaceDay_ERD.pdf`](docs/RaceDay_ERD.pdf).
 
 ## Run locally
 
@@ -80,23 +80,48 @@ dotnet run --project RaceDay.Mvc
 
 The MVC app defaults to `http://localhost:5100/` for its API base URL. Set `ApiSettings__BaseUrl` if the API listens at a different URL.
 
-## Docker images
+## Docker images and containers
 
 Build the API and MVC images separately from the solution root:
 
 ```powershell
-docker build -f Dockerfile.Api -t raceday-api:latest .
-docker build -f Dockerfile -t raceday-mvc:latest .
+docker build -f Dockerfile.Api -t raceday-api:part3 .
+docker build -f Dockerfile -t raceday-mvc:part3 .
+```
+
+The API listens on port `8080` inside its container. The MVC container also listens on
+port `8080`. Run both containers on the same Docker network:
+
+```powershell
+docker network create raceday-network
+docker run -d --name raceday-api --network raceday-network -p 5100:8080 raceday-api:part3
+docker run -d --name raceday-mvc --network raceday-network -p 5000:8080 `
+  -e "ApiSettings__BaseUrl=http://raceday-api:8080/" raceday-mvc:part3
+```
+
+Open the website at <http://localhost:5000> and API Swagger at
+<http://localhost:5100/swagger/index.html>. The API container needs a reachable SQL
+Server database; its checked-in SQL Express setting is intended for local development,
+not for a Linux container. Use environment variables or an env file for cloud settings.
+
+Useful Docker commands:
+
+```powershell
+docker ps
+docker logs -f raceday-api
+docker logs -f raceday-mvc
+docker stop raceday-mvc raceday-api
+docker rm raceday-mvc raceday-api
 ```
 
 For local Docker Hub publishing, tag each image with your own Docker Hub ID, sign in, then push both tags:
 
 ```powershell
-docker tag raceday-api:latest <docker-id>/raceday-api:latest
-docker tag raceday-mvc:latest <docker-id>/raceday-mvc:latest
+docker tag raceday-api:part3 <docker-id>/raceday-api:part3
+docker tag raceday-mvc:part3 <docker-id>/raceday-mvc:part3
 docker login -u <docker-id>
-docker push <docker-id>/raceday-api:latest
-docker push <docker-id>/raceday-mvc:latest
+docker push <docker-id>/raceday-api:part3
+docker push <docker-id>/raceday-mvc:part3
 ```
 
 Use a Docker Hub access token with **Read & Write** permission. Keep the API and MVC in separate Container Apps. The API container listens on port 8080. Configure the MVC app's `ApiSettings__BaseUrl` to the public API base URL, ending in `/`.
@@ -111,6 +136,73 @@ Follow [`docs/AZURE_DEPLOYMENT_GUIDE.md`](docs/AZURE_DEPLOYMENT_GUIDE.md) for po
 
 Set `AzureBlobStorage__ConnectionString` and `AzureBlobStorage__ContainerName` in the **API** process through a secret/environment variable. The expected container name is `raceday-images`. The API returns 503 for upload routes when storage is not configured; other API functions can still run. See the Azure deployment guide and test a banner/profile upload only after configuring storage.
 
+For a manual Azure Storage setup:
+
+1. Create an Azure Storage account using Standard performance and locally redundant storage.
+2. In the storage account, create a Blob container named `raceday-images`.
+3. Use **Blob** anonymous read access if the assessment environment permits it, because the API returns public blob URLs for images displayed by the MVC website.
+4. Copy the storage account connection string from **Security + networking** → **Access keys**.
+5. Configure the API without committing the secret:
+
+```powershell
+$env:AzureBlobStorage__ConnectionString = Read-Host "Paste the Azure Blob connection string"
+$env:AzureBlobStorage__ContainerName = "raceday-images"
+```
+
+The API accepts JPEG, PNG and WebP files up to 5 MB. Event banners are uploaded through
+`POST /api/images/events/{eventId}/banner`; profile images use
+`POST /api/images/profile`. Never put a storage key or connection string in this
+README, source control, screenshots or the video.
+
+For Docker or Azure Container Apps, provide the same settings as environment variables
+using the double-underscore names. A private env file can contain:
+
+```text
+ConnectionStrings__DefaultConnection=<Azure SQL connection string>
+AzureBlobStorage__ConnectionString=<Azure Blob connection string>
+AzureBlobStorage__ContainerName=raceday-images
+```
+
+Keep the file outside Git and add its filename to `.gitignore`.
+
+## API endpoint groups
+
+Swagger documents the complete API at `/swagger/index.html`. The main endpoint groups
+are:
+
+- `/api/auth` — registration, login and logout.
+- `/api/events` — event creation, editing, browsing and ownership checks.
+- `/api/events/{eventId}/categories` — category management.
+- `/api/enrolments` — participant enrolment and organiser entry review.
+- `/api/results` — finish times and positions for completed events.
+- `/api/profile` — participant profile details and image upload.
+- `/api/images` — event banner and profile image upload routes.
+
+Authentication uses a server-side session cookie. Organiser operations require the
+Organiser role, and participants can only access their own entries, profile and results.
+
+## Azure Container Apps configuration
+
+Deploy the API and MVC as separate Container Apps. The API container uses target port
+`8080` and should have external ingress. Configure these API settings through Container
+App secrets/environment variables:
+
+```text
+ConnectionStrings__DefaultConnection=<Azure SQL connection string>
+AzureBlobStorage__ConnectionString=<Azure Blob connection string>
+AzureBlobStorage__ContainerName=raceday-images
+```
+
+Configure the MVC Container App with:
+
+```text
+ApiSettings__BaseUrl=https://<api-container-app-hostname>/
+```
+
+Use the API HTTPS base URL with a trailing slash. Do not use `localhost` between Azure
+Container Apps. The complete portal and smoke-test procedure is in
+[`docs/AZURE_DEPLOYMENT_GUIDE.md`](docs/AZURE_DEPLOYMENT_GUIDE.md).
+
 ## Tests and CI
 
 Run the automated tests from the solution root:
@@ -118,6 +210,9 @@ Run the automated tests from the solution root:
 ```powershell
 dotnet test RaceDay.Api.Tests/RaceDay.Api.Tests.csproj --configuration Release
 ```
+
+The tests use an isolated EF Core InMemory database and do not require Azure credentials.
+The CI workflow is located at [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 The GitHub Actions workflow restores and builds the solution, runs the integration tests, and builds both API and MVC container images. A workflow file in a ZIP is not proof of a successful hosted run: push it to your GitHub repository, confirm the run is green, and capture the real run URL/screenshot. A ZIP also does not preserve Git commit history.
 
