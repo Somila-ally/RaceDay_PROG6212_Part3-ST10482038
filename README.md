@@ -216,6 +216,36 @@ The CI workflow is located at [`.github/workflows/ci.yml`](.github/workflows/ci.
 
 The GitHub Actions workflow restores and builds the solution, runs the integration tests, and builds both API and MVC container images. A workflow file in a ZIP is not proof of a successful hosted run: push it to your GitHub repository, confirm the run is green, and capture the real run URL/screenshot. A ZIP also does not preserve Git commit history.
 
+## Completed project change summary
+
+The following items summarise the implemented project work. They are listed as a
+project summary and do not replace the actual Git commit history:
+
+1. Added the RaceDay solution structure.
+2. Added the ASP.NET Core REST API project.
+3. Added the shared contracts project.
+4. Added the ASP.NET Core MVC website.
+5. Added Entity Framework Core database access.
+6. Added the SQL Server development connection configuration.
+7. Added database migrations.
+8. Added user registration.
+9. Added session-based login and logout.
+10. Added password hashing.
+11. Added Organiser and Participant roles.
+12. Added organiser event management.
+13. Added event category management.
+14. Added participant enrolment.
+15. Added organiser entry review.
+16. Added race result recording and validation.
+17. Added ownership and authorisation checks.
+18. Added participant profile management.
+19. Added Azure Blob event-banner uploads.
+20. Added Azure Blob profile-image uploads.
+21. Added Swagger API documentation.
+22. Added API integration tests.
+23. Added Dockerfiles for the API and MVC applications.
+24. Added GitHub Actions, deployment documentation and assessment guidance.
+
 ## Assessment evidence still to supply
 
 - A real GitHub repository URL with the required meaningful commit history.
